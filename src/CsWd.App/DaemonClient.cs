@@ -44,8 +44,23 @@ public static class DaemonClient
         }
     }
 
-    /// <summary>发送一个请求对象，返回响应 JSON 文档。失败抛异常。</summary>
+    /// <summary>发送一个请求对象，返回响应 JSON 文档。失败抛异常。连接竞态时自动重试。</summary>
     public static async Task<JsonElement> RequestAsync(object request, CancellationToken ct = default)
+    {
+        for (int attempt = 0; ; attempt++)
+        {
+            try
+            {
+                return await RequestOnceAsync(request, ct);
+            }
+            catch (TimeoutException) when (attempt < 2)
+            {
+                await Task.Delay(120, ct); // pipe pending 实例刚好被占用的瞬时竞态
+            }
+        }
+    }
+
+    private static async Task<JsonElement> RequestOnceAsync(object request, CancellationToken ct)
     {
         await using var pipe = new NamedPipeClientStream(".", PipeName, PipeDirection.InOut, PipeOptions.Asynchronous);
         await pipe.ConnectAsync(2000, ct);

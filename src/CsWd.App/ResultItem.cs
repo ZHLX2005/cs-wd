@@ -14,9 +14,11 @@ public class ResultItem
 
     public static ResultItem Directory(string path, int count) => new()
     {
-        Icon = "📁", Kind = ResultKind.Directory, Path = path, TagText = "Enter",
+        Icon = "📁", Kind = ResultKind.Directory, Path = path, TagText = "文件夹",
         Title = System.IO.Path.GetFileName(path.TrimEnd('\\', '/')) is { Length: > 0 } name ? name : path,
-        Subtitle = $"{path}   ({count}x)",
+        Subtitle = count > 0
+            ? $"{path}   ({count}x)"
+            : $"{path}   · VSCode 最近",
     };
 
     public static ResultItem RunCommand(string cmd) => new()

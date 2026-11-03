@@ -52,7 +52,8 @@
                      Background="Transparent" BorderThickness="0"
                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
                      ScrollViewer.VerticalScrollBarVisibility="Auto"
-                     MouseDoubleClick="ResultList_MouseDoubleClick">
+                     MouseDoubleClick="ResultList_MouseDoubleClick"
+                     PreviewMouseLeftButtonDown="ResultList_PreviewMouseLeftButtonDown">
                 <ListBox.ItemContainerStyle>
                     <Style TargetType="ListBoxItem">
                         <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}"/>
@@ -131,7 +132,7 @@
             <!-- 状态栏（1px 分隔 + tertiary 小字） -->
             <Border BorderThickness="0,1,0,0" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}"
                     Margin="0,4,0,0" CornerRadius="0,0,8,8">
-                <TextBlock x:Name="StatusText" Text="ready" FontSize="12"
+                <TextBlock x:Name="StatusText" Text="Enter 资源管理器 · Shift+Enter PowerShell · &gt; 命令 转后台" FontSize="12"
                            Foreground="{DynamicResource TextFillColorTertiaryBrush}"
                            Margin="14,6,14,9" TextTrimming="CharacterEllipsis"/>
             </Border>

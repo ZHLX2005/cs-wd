@@ -9,13 +9,15 @@ use tokio::net::windows::named_pipe::{ClientOptions, ServerOptions};
 
 use crate::exec::JobTable;
 use crate::history::History;
-use crate::protocol::{Request, Response};
+use crate::protocol::{HistoryEntry, Request, Response};
+use crate::vscode::VscodeRecent;
 
 pub const PIPE_NAME: &str = r"\\.\pipe\cs-wd-daemon";
 
 pub struct Daemon {
     pub history: Arc<tokio::sync::Mutex<History>>,
     pub jobs: Arc<JobTable>,
+    pub vscode: VscodeRecent,
 }
 
 impl Daemon {
@@ -27,10 +29,25 @@ impl Daemon {
         match req {
             Request::Ping => Response::ok(json!({ "version": env!("CARGO_PKG_VERSION") })),
             Request::Search { query } => {
-                let h = self.history.lock().await;
-                let items: Vec<serde_json::Value> = h
-                    .search(&query, 50)
-                    .into_iter()
+                // 1) 使用历史（有 count，排前）
+                let entries: Vec<HistoryEntry> = {
+                    let h = self.history.lock().await;
+                    h.search(&query, 30)
+                };
+                // 2) VSCode 最近项目补位（count=0，去重）
+                let mut all = entries;
+                let q = query.to_lowercase();
+                for p in self.vscode.recent() {
+                    if all.iter().any(|e| e.path.eq_ignore_ascii_case(&p)) {
+                        continue;
+                    }
+                    if q.is_empty() || p.to_lowercase().contains(&q) {
+                        all.push(HistoryEntry { path: p, count: 0, last_used_ms: 0 });
+                    }
+                }
+                all.truncate(50);
+                let items: Vec<serde_json::Value> = all
+                    .iter()
                     .map(|e| {
                         json!({ "path": e.path, "count": e.count, "lastUsedMs": e.last_used_ms })
                     })
@@ -85,10 +102,12 @@ pub async fn serve(daemon: Arc<Daemon>) -> anyhow::Result<()> {
     tracing::info!("listening on {PIPE_NAME}");
 
     loop {
-        // 等一个客户端连上来，然后立刻创建下一个实例排队
+        // 先建好下一个 pending 实例再 accept 当前连接：
+        // 否则 connect() 返回到 create() 之间有竞态窗口，并发客户端会踩空超时。
+        let next = ServerOptions::new().create(PIPE_NAME)?;
         server.connect().await?;
         let client = server;
-        server = ServerOptions::new().create(PIPE_NAME)?;
+        server = next;
 
         let daemon = daemon.clone();
         tokio::spawn(async move {

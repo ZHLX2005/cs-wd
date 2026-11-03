@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.IO;
 using System.Text.Json;
 using System.Windows;
 using System.Windows.Controls;
@@ -146,7 +147,7 @@ public partial class MainWindow : Window
                 e.Handled = true;
                 break;
             case Key.Enter:
-                _ = ExecuteCurrent();
+                _ = ExecuteCurrent(usePowershell: Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift));
                 e.Handled = true;
                 break;
         }
@@ -162,9 +163,19 @@ public partial class MainWindow : Window
 
     private void ResultList_MouseDoubleClick(object sender, MouseButtonEventArgs e) => _ = ExecuteCurrent();
 
+    /// <summary>Shift + 左键点击目录项 → 在 PowerShell 打开。</summary>
+    private void ResultList_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (!Keyboard.Modifiers.HasFlag(System.Windows.Input.ModifierKeys.Shift)) return;
+        if (ResultList.ContainerFromElement(e.OriginalSource as System.Windows.DependencyObject) is not ListBoxItem { Content: ResultItem it }) return;
+        if (it.Kind != ResultKind.Directory) return;
+        OpenDirectory(it.Path, usePowershell: true);
+        e.Handled = true;
+    }
+
     // ---- 执行 ----
 
-    private async Task ExecuteCurrent()
+    private async Task ExecuteCurrent(bool usePowershell = false)
     {
         if (ResultList.SelectedItem is not ResultItem it) return;
         try
@@ -173,9 +184,9 @@ public partial class MainWindow : Window
             {
                 case ResultKind.Directory:
                 {
-                    // 打开交互终端 + 记录一次使用
-                    var _ = DaemonClient.RequestAsync(new { op = "record", path = it.Path });
-                    OpenTerminal(it.Path);
+                    // Enter = 资源管理器；Shift+Enter = PowerShell（记录一次使用）
+                    _ = DaemonClient.RequestAsync(new { op = "record", path = it.Path });
+                    OpenDirectory(it.Path, usePowershell);
                     Hide();
                     break;
                 }
@@ -197,15 +208,22 @@ public partial class MainWindow : Window
         }
     }
 
-    private static void OpenTerminal(string path)
+    private static void OpenDirectory(string path, bool usePowershell)
     {
-        try
+        if (usePowershell)
         {
-            Process.Start(new ProcessStartInfo("wt.exe", $"-d \"{path}\"") { UseShellExecute = true });
+            // PowerShell（优先 pwsh，无则 Windows PowerShell），留在交互会话
+            var exe = File.Exists(Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "PowerShell", "7", "pwsh.exe"))
+                ? "pwsh.exe" : "powershell.exe";
+            var escaped = path.Replace("'", "''");
+            Process.Start(new ProcessStartInfo(exe,
+                $"-NoExit -Command \"Set-Location -LiteralPath '{escaped}'\"")
+            { UseShellExecute = true });
         }
-        catch
+        else
         {
-            Process.Start(new ProcessStartInfo("cmd.exe", $"/K cd /d \"{path}\"") { UseShellExecute = true });
+            Process.Start(new ProcessStartInfo("explorer.exe", $"\"{path}\"") { UseShellExecute = true });
         }
     }
 }

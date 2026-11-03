@@ -7,6 +7,7 @@ mod exec;
 mod history;
 mod pipe;
 mod protocol;
+mod vscode;
 
 use std::sync::Arc;
 
@@ -40,6 +41,7 @@ async fn main() -> anyhow::Result<()> {
     let daemon = Arc::new(pipe::Daemon {
         history: Arc::new(tokio::sync::Mutex::new(hist)),
         jobs: Arc::new(jobs),
+        vscode: vscode::VscodeRecent::new(),
     });
 
     tracing::info!("cs-wd-daemon {} started, data dir: {}", env!("CARGO_PKG_VERSION"), dir.display());
