@@ -1,0 +1,132 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: '要发布的 tag（如 v0.2.0）'
+        required: true
+        type: string
+
+permissions:
+  contents: write   # 建 release / 上传资产要写权限
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # 需要完整 tag 历史
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0.x'
+
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Rust cache
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src/cs-wd-daemon
+
+      - name: Resolve tag
+        id: meta
+        # ⚠️ windows-latest 的默认 shell 是 **PowerShell**，不是 bash。
+        #    显式声明 shell: pwsh 更保险（继承自 cs-dw 仓库的教训）。
+        #
+        # ⚠️ 不要用 PowerShell 的 ">> $GITHUB_OUTPUT" 写法——
+        #    多行/带特殊字符时容易静默写空。用 here-string 追加，一次一个 key=value。
+        shell: pwsh
+        run: |
+          if ("${{ github.event_name }}" -eq "workflow_dispatch") {
+            $tag = "${{ inputs.tag }}"
+          } else {
+            $tag = "${{ github.ref_name }}"
+          }
+          if ([string]::IsNullOrWhiteSpace($tag)) {
+            throw "未能解析出 tag（event=${{ github.event_name }}）"
+          }
+          $version = $tag -replace '^v', ''
+          @"
+          tag=$tag
+          name=cs-wd $tag
+          version=$version
+          "@ >> $env:GITHUB_OUTPUT
+          Write-Host "resolved tag=$tag version=$version"
+
+      - name: Build daemon (Rust)
+        shell: pwsh
+        run: |
+          cargo build --release --manifest-path src/cs-wd-daemon/Cargo.toml
+          if (-not (Test-Path src/cs-wd-daemon/target/release/cs-wd-daemon.exe)) {
+            throw "daemon 构建产物缺失"
+          }
+
+      - name: Build app (WPF)
+        shell: pwsh
+        run: |
+          dotnet publish src/CsWd.App/CsWd.App.csproj -c Release -o publish -r win-x64 --self-contained false
+          if (-not (Test-Path publish/CsWd.App.exe)) { throw "publish 产物缺失 CsWd.App.exe" }
+
+      - name: Package
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.meta.outputs.version }}
+        run: |
+          # 用 $env:VERSION 而不是把表达式直接内插进脚本（继承自 cs-dw 的教训）：
+          # 上游输出为空时会静默拼出 "cs-wd--win-x64.zip" 这种坏名字。
+          if ([string]::IsNullOrWhiteSpace($env:VERSION)) {
+            throw "VERSION 为空，meta 步骤没拿到版本号"
+          }
+          $zip = "cs-wd-" + $env:VERSION + "-win-x64.zip"
+          $stage = "stage"
+          New-Item -ItemType Directory -Path $stage | Out-Null
+          # App 全部运行时文件（framework-dependent：exe + dll + deps）
+          Copy-Item publish/* $stage/ -Recurse -Force
+          # Rust daemon（App 启动时会自动拉起它）
+          Copy-Item src/cs-wd-daemon/target/release/cs-wd-daemon.exe $stage/ -Force
+          Compress-Archive -Path "$stage/*" -DestinationPath $zip -Force
+          Write-Host "packed $zip"
+          Get-ChildItem $zip | Format-Table Name, Length
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
+        env:
+          TAG: ${{ steps.meta.outputs.tag }}
+          RELEASE_NAME: ${{ steps.meta.outputs.name }}
+          VERSION: ${{ steps.meta.outputs.version }}
+        with:
+          tag_name: ${{ env.TAG }}
+          name: ${{ env.RELEASE_NAME }}
+          generate_release_notes: true
+          body: |
+            ## cs-wd ${{ env.VERSION }}
+
+            Windows 键盘驱动的轻量启动器 —— PowerToys Run 的交互，克制的资源占用（C# WPF 薄壳 + Rust daemon）。
+
+            - `Alt+Space`（可在设置中自定义）全局唤起搜索框
+            - 搜索历史目录，回车直接在对应目录打开终端
+            - `> 命令` 转入后台执行，输出留痕可查
+            - 托盘常驻：左键唤起 · 后台任务管理（查看 / 结束 / 日志）· 设置（深浅主题 · 开机自启）
+
+            ### 使用
+            1. 解压 zip 到任意目录
+            2. 运行 `CsWd.App.exe`（会自动拉起同目录的 `cs-wd-daemon.exe`）
+            3. 托盘右键 → 设置，按喜好调整热键与主题
+
+            运行时需 [.NET 8 Desktop Runtime x64](https://dotnet.microsoft.com/download/dotnet/8.0)。
+          files: cs-wd-*-win-x64.zip
+
+      - name: Upload artifact (CI 产物)
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ steps.meta.outputs.version }}
+          path: publish/
+          retention-days: 30
