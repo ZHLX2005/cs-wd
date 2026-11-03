@@ -9,10 +9,23 @@ public partial class App : System.Windows.Application
     private TrayService? _tray;
     private SettingsWindow? _settingsWin;
     private AppSettings _settings = new();
+    private System.Threading.Mutex? _singleInstanceMutex;
 
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // 单实例保护：重复启动时激活已有实例并退出
+        _singleInstanceMutex = new System.Threading.Mutex(true, @"Local\cs-wd-single-instance", out var isNew);
+        if (!isNew)
+        {
+            System.Windows.Forms.MessageBox.Show(
+                "cs-wd 已在运行（右下角托盘图标）。\n双击托盘图标或按热键唤起。",
+                "cs-wd", System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Information);
+            Shutdown();
+            return;
+        }
 
         _settings = AppSettings.Load();
         ThemeService.Apply(_settings.Theme);
