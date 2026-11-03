@@ -88,7 +88,9 @@ public partial class MainWindow : Window
 
     private async void InputBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        ModeHint.Text = InputBox.Text.StartsWith(">") ? "BACK" : "";
+        Placeholder.Visibility = string.IsNullOrEmpty(InputBox.Text)
+            ? Visibility.Visible : Visibility.Collapsed;
+        ModeHint.Text = InputBox.Text.StartsWith(">") ? "后台执行" : "";
         await RefreshAsync();
     }
 

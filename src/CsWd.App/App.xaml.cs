@@ -15,6 +15,7 @@ public partial class App : System.Windows.Application
         base.OnStartup(e);
 
         _settings = AppSettings.Load();
+        ThemeService.Apply(_settings.Theme);
         // 拉起 daemon（幂等：daemon 自带单实例探测）
         DaemonClient.EnsureDaemon();
 
@@ -41,6 +42,7 @@ public partial class App : System.Windows.Application
         sw.Saved += s =>
         {
             _settings = s;
+            ThemeService.Apply(s.Theme);
             _mainWin?.ApplyHotkey(s);
             _tray?.UpdateHotkeyLabel(s.Hotkey);
         };

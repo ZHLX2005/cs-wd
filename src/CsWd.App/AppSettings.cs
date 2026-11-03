@@ -10,6 +10,7 @@ namespace CsWd;
 public class AppSettings
 {
     public string Hotkey { get; set; } = "Alt+Space";
+    public string Theme { get; set; } = "dark";
     public bool AutoStart { get; set; }
 
     public static string DataDir =>
