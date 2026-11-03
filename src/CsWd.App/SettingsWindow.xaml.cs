@@ -6,7 +6,7 @@ using System.Windows.Input;
 
 namespace CsWd;
 
-public partial class SettingsWindow : Window
+public partial class SettingsWindow : Wpf.Ui.Controls.FluentWindow
 {
     /// <summary>保存成功后触发（App 据此重注册热键、切主题、更新托盘文案）。</summary>
     public event Action<AppSettings>? Saved;
@@ -21,7 +21,7 @@ public partial class SettingsWindow : Window
         _pendingHotkey = settings.Hotkey;
 
         HotkeyBox.Text = _pendingHotkey;
-        AutoStartBox.IsChecked = settings.AutoStart;
+        AutoStartTgl.IsChecked = settings.AutoStart;
         (settings.Theme == ThemeService.Light ? LightRb : DarkRb).IsChecked = true;
         DataDirText.Text = AppSettings.DataDir;
     }
@@ -82,7 +82,7 @@ public partial class SettingsWindow : Window
 
         _settings.Hotkey = hotkey;
         _settings.Theme = (LightRb.IsChecked == true) ? ThemeService.Light : ThemeService.Dark;
-        _settings.AutoStart = AutoStartBox.IsChecked == true;
+        _settings.AutoStart = AutoStartTgl.IsChecked == true;
         try
         {
             _settings.Save();

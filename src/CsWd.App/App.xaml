@@ -1,11 +1,16 @@
 <Application x:Class="CsWd.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:ui="http://schemas.lepo.co/wpfui/2022/xaml"
              ShutdownMode="OnExplicitShutdown">
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <ResourceDictionary Source="Themes/Dark.xaml"/>
+        <!-- WPF-UI：Fluent 控件 + 主题 token（PowerToys 同源） -->
+        <ui:ThemesDictionary Theme="Dark"/>
+        <ui:ControlsDictionary/>
+        <!-- cs-wd 补充：wpfui 没有的个别 key，DynamicResource 跟随主题 -->
+        <ResourceDictionary Source="Themes/Overrides.xaml"/>
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>

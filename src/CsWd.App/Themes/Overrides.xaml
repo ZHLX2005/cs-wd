@@ -1,0 +1,8 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+
+    <!-- cs-wd 补充 token：wpfui 4.x 未提供的 key，用 DynamicResource 跟随主题/系统强调色 -->
+
+    <SolidColorBrush x:Key="TextControlPlaceholderForegroundBrush" Color="{DynamicResource TextControlPlaceholderForeground}"/>
+    <SolidColorBrush x:Key="AccentBrush" Color="{DynamicResource SystemAccentColorPrimary}"/>
+</ResourceDictionary>
