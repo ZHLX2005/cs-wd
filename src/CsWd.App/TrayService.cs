@@ -45,7 +45,8 @@ public sealed class TrayService : IDisposable
         _icon.ContextMenuStrip.Items.Add(settingsItem);
         _icon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
         _icon.ContextMenuStrip.Items.Add(exitItem);
-        _icon.DoubleClick += (_, _) => ShowRequested?.Invoke();
+        // 左键单击（NotifyIcon.Click 只响应左键）→ 唤起搜索框；重复唤起幂等，双击也无副作用
+        _icon.Click += (_, _) => ShowRequested?.Invoke();
     }
 
     /// <summary>设置页改热键后同步菜单文案。</summary>
