@@ -10,18 +10,50 @@ namespace CsWd;
 public partial class MainWindow : Window
 {
     private HotkeyService? _hotkey;
+    private bool _hooked;
     private int _seq;
 
     public MainWindow()
     {
         InitializeComponent();
-        SourceInitialized += (_, _) =>
+    }
+
+    /// <summary>按设置注册/更换全局热键。失败时回退 Alt+Space。</summary>
+    public void ApplyHotkey(AppSettings settings)
+    {
+        var hwnd = new WindowInteropHelper(this).EnsureHandle();
+
+        if (!_hooked)
         {
-            var hwnd = new WindowInteropHelper(this).Handle;
-            _hotkey = new HotkeyService(hwnd);
-            _hotkey.Pressed += () => Dispatcher.Invoke(ToggleVisibility);
-            HwndSource.FromHwnd(hwnd)?.AddHook(_hotkey.HookWndProc);
-        };
+            HwndSource.FromHwnd(hwnd)?.AddHook(WndProcHook);
+            _hooked = true;
+        }
+
+        _hotkey?.Dispose();
+        _hotkey = null;
+
+        if (!HotkeyPresets.TryParse(settings.Hotkey, out var mods, out var vk))
+            (mods, vk) = (HotkeyService.ModAlt, 0x20u);
+        try
+        {
+            _hotkey = new HotkeyService(hwnd, mods, vk);
+        }
+        catch
+        {
+            // 组合被占用：回退默认并提示
+            _hotkey = new HotkeyService(hwnd, HotkeyService.ModAlt, 0x20u);
+            StatusText.Text = $"热键 {settings.Hotkey} 被占用，已回退 Alt+Space";
+        }
+    }
+
+    private IntPtr WndProcHook(IntPtr hwnd, int msg, IntPtr wParam, IntPtr lParam, ref bool handled)
+    {
+        if (msg == HotkeyService.WmHotkey)
+        {
+            ToggleVisibility();
+            handled = true;
+        }
+        return IntPtr.Zero;
     }
 
     // ---- 唤起 / 隐藏 ----
@@ -95,7 +127,7 @@ public partial class MainWindow : Window
 
     // ---- 键盘 ----
 
-    private void InputBox_KeyDown(object sender, KeyEventArgs e)
+    private void InputBox_KeyDown(object sender, System.Windows.Input.KeyEventArgs e)
     {
         switch (e.Key)
         {
