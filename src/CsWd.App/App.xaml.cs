@@ -15,6 +15,23 @@ public partial class App : System.Windows.Application
     {
         base.OnStartup(e);
 
+        // 全局异常兜底：写日志到 %LOCALAPPDATA%\cs-wd\logs\app-*.log，UI 线程异常不让进程死
+        DispatcherUnhandledException += (_, e) =>
+        {
+            LogCrash(e.Exception);
+            System.Windows.Forms.MessageBox.Show(
+                $"出现错误（已写入日志，程序继续运行）：\n{e.Exception.Message}",
+                "cs-wd", System.Windows.Forms.MessageBoxButtons.OK,
+                System.Windows.Forms.MessageBoxIcon.Warning);
+            e.Handled = true;
+        };
+        AppDomain.CurrentDomain.UnhandledException += (_, e) => LogCrash(e.ExceptionObject);
+        System.Threading.Tasks.TaskScheduler.UnobservedTaskException += (_, e) =>
+        {
+            LogCrash(e.Exception);
+            e.SetObserved();
+        };
+
         // 单实例保护：重复启动时激活已有实例并退出
         _singleInstanceMutex = new System.Threading.Mutex(true, @"Local\cs-wd-single-instance", out var isNew);
         if (!isNew)
@@ -67,5 +84,18 @@ public partial class App : System.Windows.Application
     {
         _tray?.Dispose();
         Shutdown();
+    }
+
+    internal static void LogCrash(object exception)
+    {
+        try
+        {
+            var dir = System.IO.Path.Combine(AppSettings.DataDir, "logs");
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(
+                System.IO.Path.Combine(dir, $"app-{DateTime.Now:yyyyMMdd}.log"),
+                $"\n===== {DateTime.Now:yyyy-MM-dd HH:mm:ss} =====\n{exception}\n");
+        }
+        catch { /* 日志写不进去就算了，别再抛 */ }
     }
 }
