@@ -69,6 +69,10 @@ impl Daemon {
                 Ok(v) => Response::ok(v),
                 Err(e) => Response::err(e.to_string()),
             },
+            Request::Forget { id } => match self.jobs.forget(id).await {
+                Ok(v) => Response::ok(v),
+                Err(e) => Response::err(e.to_string()),
+            },
         }
     }
 }

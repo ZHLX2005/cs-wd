@@ -20,6 +20,8 @@ pub enum Request {
     Kill { id: u64 },
     /// 读取任务日志尾部
     Log { id: u64, tail: Option<usize> },
+    /// 从任务表清除一条已退出的任务（不动日志文件）
+    Forget { id: u64 },
 }
 
 #[derive(Debug, Serialize)]

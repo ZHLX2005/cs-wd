@@ -13,6 +13,7 @@ public sealed class TrayService : IDisposable
     private readonly ToolStripMenuItem _showItem;
 
     public event Action? ShowRequested;
+    public event Action? JobsRequested;
     public event Action? SettingsRequested;
     public event Action? ExitRequested;
 
@@ -28,6 +29,9 @@ public sealed class TrayService : IDisposable
         _showItem = new ToolStripMenuItem($"唤起（{hotkeyLabel}）");
         _showItem.Click += (_, _) => ShowRequested?.Invoke();
 
+        var jobsItem = new ToolStripMenuItem("后台任务…");
+        jobsItem.Click += (_, _) => JobsRequested?.Invoke();
+
         var settingsItem = new ToolStripMenuItem("设置…");
         settingsItem.Click += (_, _) => SettingsRequested?.Invoke();
 
@@ -36,6 +40,8 @@ public sealed class TrayService : IDisposable
 
         _icon.ContextMenuStrip = new ContextMenuStrip();
         _icon.ContextMenuStrip.Items.Add(_showItem);
+        _icon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
+        _icon.ContextMenuStrip.Items.Add(jobsItem);
         _icon.ContextMenuStrip.Items.Add(settingsItem);
         _icon.ContextMenuStrip.Items.Add(new ToolStripSeparator());
         _icon.ContextMenuStrip.Items.Add(exitItem);

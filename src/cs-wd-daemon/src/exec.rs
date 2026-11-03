@@ -114,6 +114,19 @@ impl JobTable {
         json!({ "jobs": list })
     }
 
+    /// 清除一条已退出的任务记录（日志文件保留）
+    pub async fn forget(&self, id: u64) -> anyhow::Result<serde_json::Value> {
+        let mut jobs = self.jobs.lock().await;
+        match jobs.remove(&id) {
+            Some(j) if !j.exited => {
+                // 运行中的任务不允许 forget，放回去
+                jobs.insert(id, j);
+                anyhow::bail!("job {id} is still running; use kill first")
+            }
+            _ => Ok(json!({ "forgot": id })),
+        }
+    }
+
     pub async fn kill(&self, id: u64) -> anyhow::Result<serde_json::Value> {
         let pid = {
             let jobs = self.jobs.lock().await;

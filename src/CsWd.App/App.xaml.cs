@@ -57,8 +57,23 @@ public partial class App : System.Windows.Application
         // 托盘常驻
         _tray = new TrayService(_settings.Hotkey);
         _tray.ShowRequested += win.ShowAndFocus;
+        _tray.JobsRequested += OpenJobs;
         _tray.SettingsRequested += OpenSettings;
         _tray.ExitRequested += ExitApp;
+    }
+
+    private JobsWindow? _jobsWin;
+
+    private void OpenJobs()
+    {
+        if (_jobsWin != null)
+        {
+            _jobsWin.Activate();
+            return;
+        }
+        _jobsWin = new JobsWindow();
+        _jobsWin.Closed += (_, _) => _jobsWin = null;
+        _jobsWin.Show();
     }
 
     private void OpenSettings()

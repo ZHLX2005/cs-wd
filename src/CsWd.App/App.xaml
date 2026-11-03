@@ -6,11 +6,11 @@
   <Application.Resources>
     <ResourceDictionary>
       <ResourceDictionary.MergedDictionaries>
-        <!-- WPF-UI：Fluent 控件 + 主题 token（PowerToys 同源） -->
+        <!-- WPF-UI：Fluent 控件 + 主题 token（PowerToys 同源）。
+             补充 key（TextControlPlaceholderForegroundBrush / AccentBrush）
+             由 ThemeService.Apply 在代码里以 frozen brush 注入。 -->
         <ui:ThemesDictionary Theme="Dark"/>
         <ui:ControlsDictionary/>
-        <!-- cs-wd 补充：wpfui 没有的个别 key，DynamicResource 跟随主题 -->
-        <ResourceDictionary Source="Themes/Overrides.xaml"/>
       </ResourceDictionary.MergedDictionaries>
     </ResourceDictionary>
   </Application.Resources>
