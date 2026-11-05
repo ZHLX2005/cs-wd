@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 #[serde(tag = "op", rename_all = "snake_case")]
 pub enum Request {
     Ping,
-    /// 按子串搜索目录历史
+    /// 搜索：目录历史 + VSCode 最近 + br-tb 数据湖链接；返回结果带 kind
     Search { query: String },
     /// 后台执行命令（可选 cwd；省略时 daemon 用最近目录）
     Run { cmd: String, cwd: Option<String> },

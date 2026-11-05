@@ -45,13 +45,35 @@ impl Daemon {
                         all.push(HistoryEntry { path: p, count: 0, last_used_ms: 0 });
                     }
                 }
-                all.truncate(50);
-                let items: Vec<serde_json::Value> = all
+                all.truncate(20);
+
+                // 3) 统一结果模型：目录项带 kind=directory，链接项带 kind=link。
+                //    目录保持原有顺序在前（最多 20），链接按匹配分在后（最多 30）。
+                let mut items: Vec<serde_json::Value> = all
                     .iter()
                     .map(|e| {
-                        json!({ "path": e.path, "count": e.count, "lastUsedMs": e.last_used_ms })
+                        json!({
+                            "kind": "directory",
+                            "path": e.path,
+                            "count": e.count,
+                            "lastUsedMs": e.last_used_ms
+                        })
                     })
                     .collect();
+
+                // 空 query 不铺历史链接（QUICKGET.md §6.3）；
+                // lake::search 内部只读 4 个白名单 kind，不遍历 lake 目录。
+                if !query.trim().is_empty() {
+                    for l in crate::lake::search(&query, 30) {
+                        items.push(json!({
+                            "kind": "link",
+                            "title": l.title,
+                            "url": l.url,
+                            "subtitle": l.subtitle,
+                            "score": l.score
+                        }));
+                    }
+                }
                 Response::ok(json!({ "items": items }))
             }
             Request::Run { cmd, cwd } => {

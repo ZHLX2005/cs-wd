@@ -1,6 +1,6 @@
 namespace CsWd;
 
-public enum ResultKind { Directory, RunCommand, Info }
+public enum ResultKind { Directory, RunCommand, Link, Info }
 
 public class ResultItem
 {
@@ -11,6 +11,7 @@ public class ResultItem
     public ResultKind Kind { get; init; }
     public string Path { get; init; } = "";
     public string Cmd { get; init; } = "";
+    public string Url { get; init; } = "";
 
     public static ResultItem Directory(string path, int count) => new()
     {
@@ -26,6 +27,14 @@ public class ResultItem
         Icon = "⚡", Kind = ResultKind.RunCommand, Cmd = cmd, TagText = "后台",
         Title = cmd,
         Subtitle = "在后台执行，输出写入日志",
+    };
+
+    /// <summary>br-tb 数据湖里的链接；回车交给系统默认浏览器。</summary>
+    public static ResultItem Link(string title, string url, string subtitle) => new()
+    {
+        Icon = "🌐", Kind = ResultKind.Link, Url = url, TagText = "链接",
+        Title = string.IsNullOrWhiteSpace(title) ? url : title,
+        Subtitle = subtitle,
     };
 
     public static ResultItem Error(string msg) => new()

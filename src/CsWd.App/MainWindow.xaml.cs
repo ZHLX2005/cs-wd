@@ -112,9 +112,21 @@ public partial class MainWindow : Window
                 var data = await DaemonClient.RequestAsync(new { op = "search", query = q });
                 foreach (var it in data.GetProperty("items").EnumerateArray())
                 {
-                    var path = it.GetProperty("path").GetString() ?? "";
-                    var count = it.TryGetProperty("count", out var c) ? c.GetInt32() : 0;
-                    items.Add(ResultItem.Directory(path, count));
+                    // daemon 未带 kind 时按旧的「目录」处理，保持向后兼容
+                    var kind = it.TryGetProperty("kind", out var k) ? k.GetString() ?? "directory" : "directory";
+                    if (kind == "link")
+                    {
+                        var title = it.GetProperty("title").GetString() ?? "";
+                        var url = it.GetProperty("url").GetString() ?? "";
+                        var subtitle = it.TryGetProperty("subtitle", out var sb) ? sb.GetString() ?? "" : "";
+                        if (url.Length > 0) items.Add(ResultItem.Link(title, url, subtitle));
+                    }
+                    else
+                    {
+                        var path = it.GetProperty("path").GetString() ?? "";
+                        var count = it.TryGetProperty("count", out var c) ? c.GetInt32() : 0;
+                        items.Add(ResultItem.Directory(path, count));
+                    }
                 }
             }
         }
@@ -198,6 +210,13 @@ public partial class MainWindow : Window
                     int? pid = job.TryGetProperty("pid", out var p) && p.ValueKind == JsonValueKind.Number ? p.GetInt32() : null;
                     string log = job.TryGetProperty("log", out var l) ? l.GetString() ?? "" : "";
                     StatusText.Text = $"job #{id} 已转后台 (pid {pid})  日志: {log}";
+                    break;
+                }
+                case ResultKind.Link:
+                {
+                    // UseShellExecute=true → 交给系统默认浏览器，不硬编码 chrome/edge
+                    Process.Start(new ProcessStartInfo(it.Url) { UseShellExecute = true });
+                    Hide();
                     break;
                 }
             }

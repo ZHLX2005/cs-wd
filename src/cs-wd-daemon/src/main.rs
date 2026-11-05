@@ -5,6 +5,7 @@
 
 mod exec;
 mod history;
+mod lake;
 mod pipe;
 mod protocol;
 mod vscode;
